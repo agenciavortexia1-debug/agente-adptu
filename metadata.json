@@ -1,0 +1,5 @@
+{
+  "name": "Adaptu — Sócio Estratégico",
+  "description": "Um agente de IA personalizado que funciona como um sócio estratégico para empreendedores, desafiando ideias e acompanhando metas.",
+  "requestFramePermissions": ["microphone"]
+}

@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Lora", serif;
+  --font-sans: "Inter", sans-serif;
+
+  --color-bg-main: #F7F6F2;
+  --color-surface: #FFFFFF;
+  --color-surface-2: #F0EDE8;
+  --color-border-subtle: #E4E0D8;
+  --color-accent-forest: #2D6A4F;
+  --color-accent-mint: #E8F4EF;
+  --color-text-main: #1A1A18;
+  --color-text-secondary: #7A7870;
+  --color-text-faint: #B8B4AA;
+}
+
+@layer base {
+  body {
+    @apply bg-bg-main text-text-main font-sans antialiased;
+  }
+  
+  h1, h2, h3, h4 {
+    @apply font-serif;
+  }
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&family=Inter:wght@300;400;500;600;700&display=swap');
