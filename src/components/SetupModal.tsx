@@ -27,7 +27,7 @@ export function SetupModal({ onSave, initialConfig }: SetupModalProps) {
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-surface border border-border-subtle rounded-2xl p-8 max-w-lg w-full shadow-2xl animate-in fade-in zoom-in duration-200">
+      <div className="bg-surface border border-border-subtle rounded-2xl p-8 max-w-lg w-full shadow-2xl">
         <h2 className="text-2xl font-serif mb-2">Configuração do Sócio</h2>
         <p className="text-text-secondary text-sm mb-6">
           Seus dados são salvos localmente. A chave OpenAI é necessária para o cérebro do Adaptu.

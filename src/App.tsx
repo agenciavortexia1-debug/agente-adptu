@@ -67,6 +67,10 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
 }
 
 export default function App() {
+  useEffect(() => {
+    console.log('Adaptu App Mounted');
+  }, []);
+
   const [config, setConfig] = useState<UserConfig | null>(getStoredConfig());
   const [goals, setGoals] = useState<Goal[]>(getStoredGoals());
   const [history, setHistory] = useState<Message[]>(getStoredHistory());
@@ -125,9 +129,11 @@ export default function App() {
     if (!config) return;
     
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
+      // Use the injected key from Vite define
+      const apiKey = typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : '';
+      
       if (!apiKey) {
-        console.error('GEMINI_API_KEY is missing');
+        console.warn('GEMINI_API_KEY is missing. TTS will not work.');
         return;
       }
 
