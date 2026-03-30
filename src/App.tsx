@@ -3,10 +3,8 @@ import {
   getStoredConfig, setStoredConfig, 
   getStoredGoals, setStoredGoals, 
   getStoredHistory, setStoredHistory,
-  UserConfig, Goal, Message, STORAGE_KEYS,
-  syncToSupabase, loadFromSupabase
+  UserConfig, Goal, Message, STORAGE_KEYS
 } from './lib/storage';
-import { supabase } from './lib/supabase';
 import { chatWithPartner, extractGoalsFromText } from './lib/openai';
 import { SetupModal } from './components/SetupModal';
 import { MessageBubble } from './components/MessageBubble';
@@ -48,86 +46,12 @@ export default function App() {
   // Voice states
   const [isListening, setIsListening] = useState(false);
   const [isAutoRead, setIsAutoRead] = useState(false);
-  const [user, setUser] = useState<any>(null);
-  const [isSyncing, setIsSyncing] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   const recognitionRef = useRef<any>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const handleSync = async () => {
-    if (!user || !config) return;
-    setIsSyncing(true);
-    try {
-      await syncToSupabase(config, goals, history);
-      alert('Sincronizado com sucesso!');
-    } catch (error) {
-      console.error('Sync error:', error);
-      alert('Erro ao sincronizar.');
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  const handleLoadFromCloud = async () => {
-    if (!user) return;
-    setIsSyncing(true);
-    try {
-      const data = await loadFromSupabase();
-      if (data) {
-        setConfig(data.config);
-        setGoals(data.goals);
-        setHistory(data.history);
-        setStoredConfig(data.config);
-        setStoredGoals(data.goals);
-        setStoredHistory(data.history);
-        alert('Dados carregados da nuvem!');
-      } else {
-        alert('Nenhum dado encontrado na nuvem.');
-      }
-    } catch (error) {
-      console.error('Load error:', error);
-      alert('Erro ao carregar dados.');
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  const handleLogin = async () => {
-    const email = prompt('Email:');
-    const password = prompt('Senha:');
-    if (email && password) {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) alert(error.message);
-    }
-  };
-
-  const handleSignup = async () => {
-    const email = prompt('Email:');
-    const password = prompt('Senha:');
-    if (email && password) {
-      const { error } = await supabase.auth.signUp({ email, password });
-      if (error) alert(error.message);
-      else alert('Verifique seu email para confirmar o cadastro!');
-    }
-  };
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-  };
 
   useEffect(() => {
     // Initialize Speech Recognition
@@ -168,12 +92,20 @@ export default function App() {
     if (!config) return;
     
     try {
-      // Create instance right before call to ensure fresh key
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        console.error('GEMINI_API_KEY is missing');
+        return;
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
       
+      // Clean text for better TTS (remove markdown, etc)
+      const cleanText = text.replace(/[*_#`]/g, '').trim();
+
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash-preview-tts",
-        contents: [{ parts: [{ text: `Diga com tom de sócio estratégico, direto e humano: ${text}` }] }],
+        contents: [{ parts: [{ text: `Diga com tom de sócio estratégico, direto e humano: ${cleanText}` }] }],
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: {
@@ -188,9 +120,9 @@ export default function App() {
       if (base64Audio) {
         const binaryString = atob(base64Audio);
         const len = binaryString.length;
-        const bytes = new Int16Array(len / 2);
-        for (let i = 0; i < len; i += 2) {
-          bytes[i / 2] = (binaryString.charCodeAt(i + 1) << 8) | binaryString.charCodeAt(i);
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
         }
 
         if (!audioContextRef.current) {
@@ -202,9 +134,11 @@ export default function App() {
           await ctx.resume();
         }
 
-        const float32Data = new Float32Array(bytes.length);
-        for (let i = 0; i < bytes.length; i++) {
-          float32Data[i] = bytes[i] / 32768.0;
+        // The Gemini TTS returns raw PCM 16-bit little-endian
+        const int16Data = new Int16Array(bytes.buffer);
+        const float32Data = new Float32Array(int16Data.length);
+        for (let i = 0; i < int16Data.length; i++) {
+          float32Data[i] = int16Data[i] / 32768.0;
         }
 
         const audioBuffer = ctx.createBuffer(1, float32Data.length, 24000);
@@ -317,14 +251,6 @@ export default function App() {
           const allGoals = [...goals, ...newGoals];
           setGoals(allGoals);
           setStoredGoals(allGoals);
-          
-          // Auto-sync if logged in
-          if (user) {
-            syncToSupabase(config, allGoals, updatedHistory).catch(e => console.error('Auto-sync failed:', e));
-          }
-        } else if (user) {
-          // Sync even if no new goals
-          syncToSupabase(config, goals, updatedHistory).catch(e => console.error('Auto-sync failed:', e));
         }
       }
     } catch (error) {
@@ -365,22 +291,38 @@ export default function App() {
     <div className="flex h-screen bg-bg-main overflow-hidden">
       {showSetup && <SetupModal onSave={handleSaveConfig} initialConfig={config} />}
 
+      {/* Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden" 
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 border-r border-border-subtle bg-surface flex flex-col shrink-0 hidden md:flex">
-        <div className="p-6 border-bottom border-border-subtle flex items-center gap-3">
-          <div className="w-10 h-10 bg-accent-forest rounded-xl flex items-center justify-center shadow-lg shadow-accent-forest/20">
-            <TrendingUp className="text-white" size={20} />
+      <aside className={cn(
+        "fixed inset-y-0 left-0 z-50 w-64 border-r border-border-subtle bg-surface flex flex-col shrink-0 transition-transform duration-300 md:relative md:translate-x-0",
+        isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+      )}>
+        <div className="p-6 border-bottom border-border-subtle flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-accent-forest rounded-xl flex items-center justify-center shadow-lg shadow-accent-forest/20">
+              <TrendingUp className="text-white" size={20} />
+            </div>
+            <div>
+              <h1 className="font-serif text-xl leading-none">Adaptu</h1>
+              <span className="text-[10px] uppercase tracking-widest text-text-faint font-bold">Sócio Estratégico</span>
+            </div>
           </div>
-          <div>
-            <h1 className="font-serif text-xl leading-none">Adaptu</h1>
-            <span className="text-[10px] uppercase tracking-widest text-text-faint font-bold">Sócio Estratégico</span>
-          </div>
+          <button onClick={() => setIsSidebarOpen(false)} className="md:hidden text-text-faint">
+            <VolumeX size={20} />
+          </button>
         </div>
 
-        <nav className="flex-1 p-4 space-y-1">
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           <div className="text-[10px] uppercase tracking-widest text-text-faint font-bold px-4 mb-2">Principal</div>
           <button 
-            onClick={() => setActiveTab('chat')}
+            onClick={() => { setActiveTab('chat'); setIsSidebarOpen(false); }}
             className={cn(
               "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all",
               activeTab === 'chat' ? "bg-accent-mint text-accent-forest font-bold" : "text-text-secondary hover:bg-surface-2"
@@ -389,7 +331,7 @@ export default function App() {
             <MessageSquare size={18} /> Conversa
           </button>
           <button 
-            onClick={() => setActiveTab('goals')}
+            onClick={() => { setActiveTab('goals'); setIsSidebarOpen(false); }}
             className={cn(
               "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all",
               activeTab === 'goals' ? "bg-accent-mint text-accent-forest font-bold" : "text-text-secondary hover:bg-surface-2"
@@ -401,65 +343,17 @@ export default function App() {
           <div className="pt-6">
             <div className="text-[10px] uppercase tracking-widest text-text-faint font-bold px-4 mb-2">Sessão</div>
             <button 
-              onClick={clearHistory}
+              onClick={() => { clearHistory(); setIsSidebarOpen(false); }}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-text-secondary hover:bg-surface-2 transition-all"
             >
               <RefreshCw size={18} /> Nova Conversa
             </button>
             <button 
-              onClick={() => setShowSetup(true)}
+              onClick={() => { setShowSetup(true); setIsSidebarOpen(false); }}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-text-secondary hover:bg-surface-2 transition-all"
             >
               <Settings size={18} /> Configurações
             </button>
-          </div>
-
-          <div className="pt-6">
-            <div className="text-[10px] uppercase tracking-widest text-text-faint font-bold px-4 mb-2">Nuvem (Supabase)</div>
-            {!user ? (
-              <div className="space-y-1">
-                <button 
-                  onClick={handleLogin}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-text-secondary hover:bg-surface-2 transition-all"
-                >
-                  <LogIn size={18} /> Entrar
-                </button>
-                <button 
-                  onClick={handleSignup}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-text-secondary hover:bg-surface-2 transition-all"
-                >
-                  <Cloud size={18} /> Criar Conta
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-1">
-                <div className="px-4 py-2 text-[10px] text-text-faint truncate">
-                  {user.email}
-                </div>
-                <button 
-                  onClick={handleSync}
-                  disabled={isSyncing}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-text-secondary hover:bg-surface-2 transition-all disabled:opacity-50"
-                >
-                  <CloudUpload size={18} className={cn(isSyncing && "animate-pulse")} /> 
-                  {isSyncing ? "Sincronizando..." : "Salvar na Nuvem"}
-                </button>
-                <button 
-                  onClick={handleLoadFromCloud}
-                  disabled={isSyncing}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-text-secondary hover:bg-surface-2 transition-all disabled:opacity-50"
-                >
-                  <CloudDownload size={18} className={cn(isSyncing && "animate-pulse")} />
-                  {isSyncing ? "Carregando..." : "Baixar da Nuvem"}
-                </button>
-                <button 
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-destructive hover:bg-destructive/10 transition-all"
-                >
-                  <LogOut size={18} /> Sair
-                </button>
-              </div>
-            )}
           </div>
 
           <div className="pt-6">
@@ -504,36 +398,21 @@ export default function App() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0">
         <header className="h-16 border-b border-border-subtle bg-surface flex items-center justify-between px-6 md:hidden">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-accent-forest rounded-lg flex items-center justify-center">
-              <TrendingUp className="text-white" size={16} />
+          <div className="flex items-center gap-3">
+            <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 text-text-faint">
+              <LayoutDashboard size={20} />
+            </button>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-accent-forest rounded-lg flex items-center justify-center">
+                <TrendingUp className="text-white" size={16} />
+              </div>
+              <h1 className="font-serif text-lg">Adaptu</h1>
             </div>
-            <h1 className="font-serif text-lg">Adaptu</h1>
           </div>
           <div className="flex gap-4">
-            <button onClick={() => setActiveTab('chat')} className={cn(activeTab === 'chat' ? "text-accent-forest" : "text-text-faint")}>
-              <MessageSquare size={20} />
-            </button>
-            <button onClick={() => setActiveTab('goals')} className={cn(activeTab === 'goals' ? "text-accent-forest" : "text-text-faint")}>
-              <Target size={20} />
-            </button>
             <button onClick={toggleAutoRead} className={cn(isAutoRead ? "text-accent-forest" : "text-text-faint")}>
               {isAutoRead ? <Volume2 size={20} /> : <VolumeX size={20} />}
             </button>
-            {user ? (
-              <button onClick={handleSync} disabled={isSyncing} className="text-accent-forest">
-                <CloudUpload size={20} className={cn(isSyncing && "animate-pulse")} />
-              </button>
-            ) : (
-              <div className="flex gap-3">
-                <button onClick={handleLogin} className="text-text-faint">
-                  <LogIn size={20} />
-                </button>
-                <button onClick={handleSignup} className="text-text-faint">
-                  <Cloud size={20} />
-                </button>
-              </div>
-            )}
           </div>
         </header>
 

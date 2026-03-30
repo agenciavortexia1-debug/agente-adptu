@@ -15,7 +15,7 @@ export function MessageBubble({ message, userName, onSpeak }: MessageBubbleProps
 
   return (
     <div className={cn(
-      "flex gap-3 max-w-[85%] animate-in fade-in slide-in-from-bottom-2 duration-300 group",
+      "flex gap-3 max-w-[90%] md:max-w-[85%] animate-in fade-in slide-in-from-bottom-2 duration-300 group",
       isAgent ? "self-start" : "self-end flex-row-reverse"
     )}>
       <div className={cn(
@@ -44,10 +44,11 @@ export function MessageBubble({ message, userName, onSpeak }: MessageBubbleProps
         {isAgent && onSpeak && (
           <button 
             onClick={onSpeak}
-            className="absolute -right-8 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-white border border-border-subtle text-text-faint hover:text-accent-forest hover:border-accent-forest transition-all opacity-0 group-hover:opacity-100 shadow-sm"
+            className="mt-1 flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest text-text-faint hover:text-accent-forest hover:bg-accent-mint transition-all"
             title="Ouvir resposta"
           >
             <Volume2 size={12} />
+            <span>Ouvir</span>
           </button>
         )}
       </div>

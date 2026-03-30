@@ -25,7 +25,7 @@ export function GoalsPanel({ goals, onDelete, onToggleStatus }: GoalsPanelProps)
   };
 
   return (
-    <div className="p-8 h-full overflow-y-auto">
+    <div className="p-4 md:p-8 h-full overflow-y-auto">
       <div className="mb-8">
         <h2 className="text-2xl font-serif mb-1">Metas e Prazos</h2>
         <p className="text-text-secondary text-sm">Acompanhamento estratégico do seu progresso.</p>
@@ -37,13 +37,13 @@ export function GoalsPanel({ goals, onDelete, onToggleStatus }: GoalsPanelProps)
           <p className="text-center">Nenhuma meta registrada ainda.<br />O sócio detecta metas automaticamente no chat.</p>
         </div>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {goals.map((goal) => {
             const status = getStatusInfo(goal);
             const Icon = status.icon;
             
             return (
-              <div key={goal.id} className="bg-surface border border-border-subtle rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow group">
+              <div key={goal.id} className="bg-surface border border-border-subtle rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow group flex flex-col">
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex-1">
                     <div className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider mb-3", status.color)}>
@@ -52,7 +52,7 @@ export function GoalsPanel({ goals, onDelete, onToggleStatus }: GoalsPanelProps)
                     </div>
                     <h3 className="font-medium text-lg leading-tight">{goal.description}</h3>
                   </div>
-                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                     <button 
                       onClick={() => onToggleStatus(goal.id)}
                       className="p-2 hover:bg-bg-main rounded-lg text-text-secondary transition-colors"
@@ -69,15 +69,15 @@ export function GoalsPanel({ goals, onDelete, onToggleStatus }: GoalsPanelProps)
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between mt-4 pt-4 border-t border-border-subtle">
+                <div className="mt-auto pt-4 border-t border-border-subtle flex items-center justify-between">
                   <div className="flex items-center gap-2 text-text-secondary text-xs">
                     <Calendar size={14} />
-                    <span>Prazo: {format(new Date(goal.deadline), "dd 'de' MMMM", { locale: ptBR })}</span>
+                    <span>{format(new Date(goal.deadline), "dd 'de' MMMM", { locale: ptBR })}</span>
                   </div>
                   
                   {goal.status !== 'completed' && (
                     <div className="text-[10px] font-bold text-text-faint uppercase tracking-widest">
-                      {differenceInDays(new Date(goal.deadline), new Date())} dias restantes
+                      {differenceInDays(new Date(goal.deadline), new Date())}d
                     </div>
                   )}
                 </div>
