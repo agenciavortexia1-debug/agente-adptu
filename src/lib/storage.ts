@@ -27,28 +27,55 @@ export const STORAGE_KEYS = {
 };
 
 export function getStoredConfig(): UserConfig | null {
-  const data = localStorage.getItem(STORAGE_KEYS.CONFIG);
-  return data ? JSON.parse(data) : null;
+  try {
+    const data = localStorage.getItem(STORAGE_KEYS.CONFIG);
+    return data ? JSON.parse(data) : null;
+  } catch (e) {
+    console.error('Error parsing config:', e);
+    return null;
+  }
 }
 
 export function setStoredConfig(config: UserConfig) {
-  localStorage.setItem(STORAGE_KEYS.CONFIG, JSON.stringify(config));
+  try {
+    localStorage.setItem(STORAGE_KEYS.CONFIG, JSON.stringify(config));
+  } catch (e) {
+    console.error('Error saving config:', e);
+  }
 }
 
 export function getStoredGoals(): Goal[] {
-  const data = localStorage.getItem(STORAGE_KEYS.GOALS);
-  return data ? JSON.parse(data) : [];
+  try {
+    const data = localStorage.getItem(STORAGE_KEYS.GOALS);
+    return data ? JSON.parse(data) : [];
+  } catch (e) {
+    console.error('Error parsing goals:', e);
+    return [];
+  }
 }
 
 export function setStoredGoals(goals: Goal[]) {
-  localStorage.setItem(STORAGE_KEYS.GOALS, JSON.stringify(goals));
+  try {
+    localStorage.setItem(STORAGE_KEYS.GOALS, JSON.stringify(goals));
+  } catch (e) {
+    console.error('Error saving goals:', e);
+  }
 }
 
 export function getStoredHistory(): Message[] {
-  const data = localStorage.getItem(STORAGE_KEYS.HISTORY);
-  return data ? JSON.parse(data) : [];
+  try {
+    const data = localStorage.getItem(STORAGE_KEYS.HISTORY);
+    return data ? JSON.parse(data) : [];
+  } catch (e) {
+    console.error('Error parsing history:', e);
+    return [];
+  }
 }
 
 export function setStoredHistory(history: Message[]) {
-  localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(history));
+  try {
+    localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(history));
+  } catch (e) {
+    console.error('Error saving history:', e);
+  }
 }
