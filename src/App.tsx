@@ -33,39 +33,6 @@ import { GoogleGenAI, Modality } from "@google/genai";
 // Initialize Gemini for TTS
 // const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: any}> {
-  constructor(props: any) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-  static getDerivedStateFromError(error: any) {
-    return { hasError: true, error };
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="p-10 text-center bg-white min-h-screen flex flex-col items-center justify-center">
-          <h1 className="text-2xl font-bold text-red-600 mb-4">Algo deu errado.</h1>
-          <p className="mb-4 text-gray-600">Ocorreu um erro inesperado ao carregar a aplicação.</p>
-          <pre className="bg-gray-100 p-4 rounded text-left overflow-auto max-w-full text-xs mb-4">
-            {this.state.error?.toString()}
-          </pre>
-          <button 
-            onClick={() => {
-              localStorage.clear();
-              window.location.reload();
-            }}
-            className="bg-accent-forest text-white px-6 py-2 rounded-xl font-bold shadow-lg shadow-accent-forest/20"
-          >
-            Limpar Dados e Recarregar
-          </button>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
-
 export default function App() {
   useEffect(() => {
     console.log('Adaptu App Mounted');
@@ -327,8 +294,7 @@ export default function App() {
   };
 
   return (
-    <ErrorBoundary>
-      <div className="flex h-screen bg-bg-main overflow-hidden">
+    <div className="flex h-screen bg-bg-main overflow-hidden">
         {showSetup && <SetupModal onSave={handleSaveConfig} initialConfig={config} />}
 
         {/* Sidebar Overlay */}
@@ -527,6 +493,5 @@ export default function App() {
         )}
       </main>
     </div>
-    </ErrorBoundary>
   );
 }
