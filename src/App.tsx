@@ -33,6 +33,39 @@ import { GoogleGenAI, Modality } from "@google/genai";
 // Initialize Gemini for TTS
 // const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
+class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: any}> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, error };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-10 text-center bg-white min-h-screen flex flex-col items-center justify-center">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">Algo deu errado.</h1>
+          <p className="mb-4 text-gray-600">Ocorreu um erro inesperado ao carregar a aplicação.</p>
+          <pre className="bg-gray-100 p-4 rounded text-left overflow-auto max-w-full text-xs mb-4">
+            {this.state.error?.toString()}
+          </pre>
+          <button 
+            onClick={() => {
+              localStorage.clear();
+              window.location.reload();
+            }}
+            className="bg-accent-forest text-white px-6 py-2 rounded-xl font-bold shadow-lg shadow-accent-forest/20"
+          >
+            Limpar Dados e Recarregar
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function App() {
   const [config, setConfig] = useState<UserConfig | null>(getStoredConfig());
   const [goals, setGoals] = useState<Goal[]>(getStoredGoals());
@@ -288,36 +321,37 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen bg-bg-main overflow-hidden">
-      {showSetup && <SetupModal onSave={handleSaveConfig} initialConfig={config} />}
+    <ErrorBoundary>
+      <div className="flex h-screen bg-bg-main overflow-hidden">
+        {showSetup && <SetupModal onSave={handleSaveConfig} initialConfig={config} />}
 
-      {/* Sidebar Overlay */}
-      {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-40 md:hidden" 
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
+        {/* Sidebar Overlay */}
+        {isSidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-black/50 z-40 md:hidden" 
+            onClick={() => setIsSidebarOpen(false)}
+          />
+        )}
 
-      {/* Sidebar */}
-      <aside className={cn(
-        "fixed inset-y-0 left-0 z-50 w-64 border-r border-border-subtle bg-surface flex flex-col shrink-0 transition-transform duration-300 md:relative md:translate-x-0",
-        isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-      )}>
-        <div className="p-6 border-bottom border-border-subtle flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-accent-forest rounded-xl flex items-center justify-center shadow-lg shadow-accent-forest/20">
-              <TrendingUp className="text-white" size={20} />
+        {/* Sidebar */}
+        <aside className={cn(
+          "fixed inset-y-0 left-0 z-50 w-64 border-r border-border-subtle bg-surface flex flex-col shrink-0 transition-transform duration-300 md:relative md:translate-x-0",
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        )}>
+          <div className="p-6 border-b border-border-subtle flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-accent-forest rounded-xl flex items-center justify-center shadow-lg shadow-accent-forest/20">
+                <TrendingUp className="text-white" size={20} />
+              </div>
+              <div>
+                <h1 className="font-serif text-xl leading-none">Adaptu</h1>
+                <span className="text-[10px] uppercase tracking-widest text-text-faint font-bold">Sócio Estratégico</span>
+              </div>
             </div>
-            <div>
-              <h1 className="font-serif text-xl leading-none">Adaptu</h1>
-              <span className="text-[10px] uppercase tracking-widest text-text-faint font-bold">Sócio Estratégico</span>
-            </div>
+            <button onClick={() => setIsSidebarOpen(false)} className="md:hidden text-text-faint">
+              <VolumeX size={20} />
+            </button>
           </div>
-          <button onClick={() => setIsSidebarOpen(false)} className="md:hidden text-text-faint">
-            <VolumeX size={20} />
-          </button>
-        </div>
 
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           <div className="text-[10px] uppercase tracking-widest text-text-faint font-bold px-4 mb-2">Principal</div>
@@ -487,5 +521,6 @@ export default function App() {
         )}
       </main>
     </div>
+    </ErrorBoundary>
   );
 }
